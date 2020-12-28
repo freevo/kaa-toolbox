@@ -18,6 +18,7 @@
 # 02110-1301 USA
 
 import logging
+import functools
 import asyncio
 
 from .asyncio import detach
@@ -122,7 +123,7 @@ class Signal:
         if len(self._callbacks) >= Signal.MAX_CONNECTIONS:
             raise ValueError('Number of callbacks exceeds Signal.MAX_CONNECTIONS limit (%d)' % Signal.MAX_CONNECTIONS)
 
-        callback = partial(callback, *args, **kwargs)
+        callback = functools.partial(callback, *args, **kwargs)
         callback._signal_once = once
 
         if pos == -1:
