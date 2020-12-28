@@ -1,13 +1,12 @@
-# -*- coding: iso-8859-1 -*-
-# -----------------------------------------------------------------------------
-# setup.py - Setup script for kaa.metadata
-# -----------------------------------------------------------------------------
-# kaa-toolbox - Usefull modules and functions
-# Copyright 2005-2012,2020 Dirk Meyer, Jason Tackaberry
+# -*- coding: utf-8 -*-
 #
-# Maintainer:    Dirk Meyer <https://github.com/Dischi>
+# kaa-toolbox - Usefull modules and functions
+# Copyright 2020 Dirk Meyer, Jason Tackaberry
+#
+# Maintainer: Dirk Meyer <https://github.com/Dischi>
 #
 # Some parts are copied from kaa.base and ported to Python 3
+# Copyright 2005-2012 Dirk Meyer, Jason Tackaberry
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,14 +22,11 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
-# -----------------------------------------------------------------------------
 
-MODULE = 'toolbox'
 VERSION = '0.1.0'
 
-# python imports
 import os
-from setuptools import setup, Extension
+import setuptools
 
 packages = []
 package_dir = {}
@@ -40,7 +36,7 @@ for dirpath, dirnames, files in os.walk('src'):
         package_dir[python_dirpath] = dirpath
         packages.append(python_dirpath)
 
-setup(
+setuptools.setup(
     name = 'kaa-toolbox',
     version = VERSION,
     license = 'LGPL',

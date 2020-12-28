@@ -1,3 +1,27 @@
+# -*- coding: utf-8 -*-
+#
+# kaa-toolbox - Usefull modules and functions
+# Copyright 2020 Dirk Meyer, Jason Tackaberry
+#
+# Maintainer: Dirk Meyer <https://github.com/Dischi>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MER-
+# CHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+# Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#
+
+__all__ = [ 'policy_replace', 'policy_synchronized', 'policy_task', 'policy_clock' ]
+
 import time
 import logging
 import asyncio
@@ -7,7 +31,7 @@ from .asyncio import call_later
 
 log = logging.getLogger('kaa.toolbox')
 
-class policy:
+class _policy:
     def __get__(self, instance, owner):
         # Make the decorator a descriptor and return a new object for
         # the instance. We need to cache the new policy interact with
@@ -19,7 +43,7 @@ class policy:
         return getattr(instance, name)
 
 
-class policy_replace(policy):
+class policy_replace(_policy):
     """Decorator to ensure that a function is in progress only once.
 
     If the function is called while another call is waiting async, the
@@ -36,7 +60,7 @@ class policy_replace(policy):
         return (await self.task)
 
 
-class policy_synchronized(policy):
+class policy_synchronized(_policy):
     """Decorator to ensure that a function is in progress only once.
 
     If the function is called while another call is waiting async, its
@@ -51,7 +75,7 @@ class policy_synchronized(policy):
             return (await self.func(*args, **kwargs))
 
 
-class policy_task(policy):
+class policy_task(_policy):
     """Decorator to mark a function as Task
 
     Only one instance of the function can run at any given time. For
@@ -98,7 +122,7 @@ class policy_task(policy):
         return True
 
 
-class policy_clock(policy):
+class policy_clock(_policy):
     """Run the decorated function at a specific time
 
     Only one instance of the function can be scheduled at any given
