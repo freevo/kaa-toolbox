@@ -111,11 +111,7 @@ class Signal:
         """
         Connects a new callback to the signal.  args and kwargs will be bound
         to the callback and merged with the args and kwargs passed during
-        emit().  If weak is True, a WeakCallable will be created.  If once is
-        True, the callback will be automatically disconnected after the next
         emit().
-
-        This method returns the Callable (or WeakCallable) object created.
         """
         if not callable(callback):
             raise TypeError('callback must be callable, got %s instead.' % callback)
