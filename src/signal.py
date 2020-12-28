@@ -17,6 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301 USA
 
+__all__ = [ 'Signal', 'Signals' ]
+
 import logging
 import functools
 import asyncio
@@ -310,3 +312,99 @@ class Signal:
         if not self._future:
             self._future = asyncio.Future()
         return self._future
+
+
+
+class Signals(dict):
+    """
+    A collection of one or more Signal objects, which behaves like a dictionary
+    (with key order preserved).
+
+    The initializer takes zero or more arguments, where each argument can be a:
+        * dict (of name=Signal() pairs) or other Signals object
+        * tuple/list of (name, Signal) tuples
+        * str representing the name of the signal
+    """
+    def __init__(self, *signals):
+        super().__init__()
+        # Preserve order of keys.
+        self._keys = []
+        for s in signals:
+            if isinstance(s, dict):
+                # parameter is a dict/Signals object
+                self.update(s)
+                self._keys.extend(s.keys())
+            elif isinstance(s, str):
+                # parameter is a string
+                self[s] = Signal()
+                self._keys.append(s)
+            elif isinstance(s, (tuple, list)) and len(s) == 2:
+                # In form (key, value)
+                if isinstance(s[0], basestring) and isinstance(s[1], Signal):
+                    self[s[0]] = s[1]
+                    self._keys.append(s[0])
+                else:
+                    raise TypeError('With form (k, v), key must be string and v must be Signal')
+
+            else:
+                # parameter is something else, bad
+                raise TypeError('signal key must be string')
+
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self._keys.remove(key)
+
+
+    def keys(self):
+        """
+        List of signal names (strings).
+        """
+        return self._keys
+
+
+    def values(self):
+        """
+        List of Signal objects.
+        """
+        return [self[k] for k in self._keys]
+
+
+    def __add__(self, signals):
+        return Signals(self, *signals)
+
+
+    def add(self, *signals):
+        """
+        Creates a new Signals object by merging all signals defined in
+        self and the signals specified in the arguments.
+
+        The same types of arguments accepted by the initializer are allowed
+        here.
+        """
+        return Signals(self, *signals)
+
+
+    def subset(self, *names):
+        """
+        Returns a new Signals object by taking a subset of the supplied
+        signal names.
+
+        The keys of the new Signals object are ordered as specified in the
+        names parameter.
+
+            >>> yield signals.subset('pass', 'fail').any()
+        """
+        return Signals(*[(k, self[k]) for k in names])
+
+
+    def futures(self):
+        return [self[k].future() for k in self._keys]
+
+
+    def any(self):
+        return asyncio.wait(self.futures(), return_when=asyncio.FIRST_COMPLETED)
+
+
+    def all(self, return_exceptions=True):
+        return asyncio.gather(*self.futures(), return_exceptions=return_exceptions)
