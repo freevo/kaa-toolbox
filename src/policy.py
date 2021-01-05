@@ -174,7 +174,7 @@ class policy_clock(_policy):
         if t - time.time() > 10:
             # We should not wakeup yet; restart timer
             log.info('restart for %s' % self.name)
-            return self(t, log=log, name=self.name)
+            return self(t, log=log)
         try:
             log.info('emit for %s' % self.name)
             obj = self.func()
