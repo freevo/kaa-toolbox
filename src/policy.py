@@ -20,7 +20,7 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
-__all__ = [ 'policy_replace', 'policy_synchronized', 'policy_task', 'policy_clock' ]
+__all__ = [ 'policy_replace', 'policy_synchronized', 'policy_task', 'policy_clock', 'policy_cron' ]
 
 import time
 import logging
@@ -182,3 +182,52 @@ class policy_clock(_policy):
                 await obj
         except:
             log.exception('emit')
+
+
+class policy_cron:
+    """Call the function repeatedly at the given time
+
+    A function decorated with policy_cron will be called repeatedly
+    based on the given hours and minutes. The scheduler takes care of
+    day changes. The cron will be started just be decorating a
+    function is stopped by returning False (or raising an exception).
+
+    """
+    def __init__(self, hours=range(24), minutes=0):
+        if isinstance(minutes, int):
+            minutes = [ minutes ]
+        if isinstance(hours, int):
+            hours = [ hours ]
+        self.minutes = sorted(list(minutes))
+        self.hours = sorted(list(hours))
+
+    def start_next(self):
+        now = time.localtime()
+        secs = - now.tm_sec
+        hour = now.tm_hour
+        for m in self.minutes:
+            if m > now.tm_min:
+                secs += (m-now.tm_min) * 60
+                break
+        else:
+            secs += (self.minutes[0]-now.tm_min) * 60
+            hour += 1
+        for h in self.hours:
+            if h >= hour:
+                secs += (h-now.tm_hour)*3600
+                break
+        else:
+            secs += (24+self.hours[0]-now.tm_hour)*3600
+        call_later(secs, self.execute)
+
+    async def execute(self):
+        obj = self.func()
+        if asyncio.iscoroutine(obj):
+            obj = await obj
+        if obj is not False:
+            self.start_next()
+
+    def __call__(self,f):
+        self.func = f
+        self.start_next()
+        return f
