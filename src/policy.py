@@ -68,10 +68,10 @@ class policy_synchronized(_policy):
     """
     def __init__(self, func):
         self.func = func
-        self.sem = asyncio.Semaphore(1)
+        self.lock = asyncio.Lock()
 
     async def __call__(self, *args, **kwargs):
-        async with self.sem:
+        async with self.lock:
             return (await self.func(*args, **kwargs))
 
 
