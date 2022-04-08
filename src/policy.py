@@ -127,7 +127,7 @@ class policy_clock(_policy):
 
     Only one instance of the function can be scheduled at any given
     time. For class methods, each class instance can have its own
-    timer. A function decorated as policy_timer is started with the
+    timer. A function decorated as policy_clock is started with the
     time to be executed. Starting the function with zero as time will
     terminate a current timer.
     """
@@ -154,13 +154,8 @@ class policy_clock(_policy):
             log.info('no timer for %s scheduled' % self.name)
             return
         log.info('timer %s at %s' % (self.name, time.ctime(t)))
-        if t-time.time() > 60*60*23.5:
-            # Set timer. Due to a Python bug not more than one day in the
-            # future. Let emit do a reschedule.
-            self.timer = call_later(60*60*23, self.emit, t, log, log=log)
-        else:
-            # Set timer. Make sure the timer is always positive
-            self.timer = call_later(max(t-time.time(), 0.1), self.emit, t, log, log=log)
+        # Set timer. Make sure the timer is always positive
+        self.timer = call_later(max(t-time.time(), 0.1), self.emit, t, log, log=log)
 
     def stop(self):
         self.value = 0
@@ -169,19 +164,15 @@ class policy_clock(_policy):
             self.timer = None
 
     async def emit(self, t, log):
+        log.info('emit for %s' % self.name)
         self.timer = None
         self.value = 0
-        if t - time.time() > 10:
-            # We should not wakeup yet; restart timer
-            log.info('restart for %s' % self.name)
-            return self(t, log=log)
         try:
-            log.info('emit for %s' % self.name)
             obj = self.func()
             if asyncio.iscoroutine(obj):
                 await obj
         except:
-            log.exception('emit')
+            log.exception('policy_clock')
 
 
 class policy_cron:
@@ -221,9 +212,12 @@ class policy_cron:
         call_later(secs, self.execute)
 
     async def execute(self):
-        obj = self.func()
-        if asyncio.iscoroutine(obj):
-            obj = await obj
+        try:
+            obj = self.func()
+            if asyncio.iscoroutine(obj):
+                obj = await obj
+        except:
+            log.exception('policy_cron')
         if obj is not False:
             self.start_next()
 
