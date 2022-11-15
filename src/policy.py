@@ -212,6 +212,7 @@ class policy_cron:
         call_later(secs, self.execute)
 
     async def execute(self):
+        obj = False
         try:
             obj = self.func()
             if asyncio.iscoroutine(obj):
