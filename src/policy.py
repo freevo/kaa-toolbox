@@ -27,7 +27,7 @@ import logging
 import asyncio
 import functools
 
-from .asyncio import call_later
+from .asyncio import is_clock_synchronized, call_later, call_at
 
 log = logging.getLogger('kaa.toolbox')
 
@@ -92,8 +92,6 @@ class policy_task(_policy):
     def __init__(self, func):
         self.func = func
         self.task = None
-        self.__name__ = func.__name__
-        self.__doc__ = func.__doc__
 
     def start(self, *args, **kwargs):
         """Start the function as asyncio.Task
@@ -135,14 +133,13 @@ class policy_clock(_policy):
         self.timer = None
         self.value = 0
         self.func = func
-        self.__name__ = func.__name__
-        self.__doc__ = func.__doc__
 
     def __call__(self, t, log=log):
         self.log = log
         self.name = '%s.%s' % (getattr(self.func, '__module__', None), self.func.__name__)
-        if t < time.time() - 60*60*24:
-            # More than one day ago? Ignore this timer
+        # More than one hour ago? Ignore this timer. Otherwise,
+        # try to call it as soon as possible
+        if t < time.time() - 3600:
             t = 0
         if self.value == t:
             return
@@ -154,8 +151,7 @@ class policy_clock(_policy):
             log.info('no timer for %s scheduled' % self.name)
             return
         log.info('timer %s at %s' % (self.name, time.ctime(t)))
-        # Set timer. Make sure the timer is always positive
-        self.timer = call_later(max(t-time.time(), 0.1), self.emit, t, log, log=log)
+        call_at(t, self.emit, t, log, log=log)
 
     def stop(self):
         self.value = 0
@@ -209,9 +205,25 @@ class policy_cron:
                 break
         else:
             secs += (24+self.hours[0]-now.tm_hour)*3600
-        call_later(secs, self.execute)
+        if secs > 90 and not is_clock_synchronized():
+            # The clock is not synchronized. Do not trust what we just
+            # calculated and calculate again in one minute.
+            call_later(60, self.start_next)
+            return
+        if secs > 3 * 3600:
+            # More than three hours in the future. To be safe with
+            # time jumps between time.time() and loop.time(), repeat
+            # this calulation one hour before start.
+            call_later(secs - 3605, self.start_next)
+            return
+        call_later(secs, self.execute, time.time() + secs)
 
-    async def execute(self):
+    async def execute(self, startat):
+        missing = startat - time.time()
+        if missing > 0:
+            # Make sure we do not start too early. This could happen
+            # if the system time is adjusted by ntp while we waited.
+            await asyncio.sleep(max(0.1, missing))
         obj = False
         try:
             obj = self.func()
@@ -222,7 +234,7 @@ class policy_cron:
         if obj is not False:
             self.start_next()
 
-    def __call__(self,f):
-        self.func = f
+    def __call__(self, func):
+        self.func = func
         self.start_next()
-        return f
+        return func
