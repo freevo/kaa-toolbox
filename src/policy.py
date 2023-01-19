@@ -42,6 +42,10 @@ class _policy:
             setattr(instance, name, self.__class__(func))
         return getattr(instance, name)
 
+    def __repr__(self):
+        if hasattr(self, 'func'):
+            return repr(self.func)
+        return super(_policy, self).__repr__()
 
 class policy_replace(_policy):
     """Decorator to ensure that a function is in progress only once.
