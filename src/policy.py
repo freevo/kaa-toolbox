@@ -20,7 +20,7 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
-__all__ = [ 'policy_replace', 'policy_synchronized', 'policy_task', 'policy_clock', 'policy_cron' ]
+__all__ = [ 'policy_replace', 'policy_synchronized', 'policy_task', 'policy_cron' ]
 
 import time
 import logging
@@ -130,60 +130,6 @@ class policy_task(_policy):
                 return False
             self.task = None
         return True
-
-
-class policy_clock(_policy):
-    """Run the decorated function at a specific time
-
-    Only one instance of the function can be scheduled at any given
-    time. For class methods, each class instance can have its own
-    timer. A function decorated as policy_clock is started with the
-    time to be executed. Starting the function with zero as time will
-    terminate a current timer.
-    """
-    def __init__(self, func):
-        self.timer = None
-        self.value = 0
-        self.func = func
-        self.name = '%s.%s' % (getattr(self.func, '__module__', None), self.func.__name__)
-        self.__name__ = func.__name__
-        if getattr(func, '__module__'):
-            self.__module__ = func.__module__
-
-    def __call__(self, t, log=log):
-        self.log = log
-        # More than one hour ago? Ignore this timer. Otherwise,
-        # try to call it as soon as possible
-        if t < time.time() - 3600:
-            t = 0
-        if self.value == t:
-            return
-        self.value = t
-        if self.timer:
-            self.timer.cancel()
-        if not t:
-            self.timer = None
-            log.info('no timer for %s scheduled' % self.name)
-            return
-        log.info('timer %s at %s' % (self.name, time.ctime(t)))
-        self.timer = call_at(t, self.emit, t, log, log=log)
-
-    def stop(self):
-        self.value = 0
-        if self.timer:
-            self.timer.cancel()
-            self.timer = None
-
-    async def emit(self, t, log):
-        log.info('emit for %s' % self.name)
-        self.timer = None
-        self.value = 0
-        try:
-            obj = self.func()
-            if asyncio.iscoroutine(obj):
-                await obj
-        except:
-            log.exception('policy_clock')
 
 
 class policy_cron:

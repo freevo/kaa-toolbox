@@ -24,4 +24,4 @@ from .asyncio import detach, call_later
 from .callable import Callable, DetachedCallable, OneShotTimer, Timer
 from .signal import Signal, Signals
 from .policy import policy_synchronized, policy_replace, policy_task, \
-    policy_clock, policy_cron
+    policy_cron
