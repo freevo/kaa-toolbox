@@ -56,12 +56,20 @@ class policy_replace(_policy):
     def __init__(self, func):
         self.func = func
         self.task = None
+        self.__name__ = func.__name__
+        if getattr(func, '__module__'):
+            self.__module__ = func.__module__
 
     async def __call__(self, *args, **kwargs):
         if self.task:
             self.task.cancel()
         self.task = asyncio.Task(self.func(*args, **kwargs))
-        return (await self.task)
+        try:
+            return (await self.task)
+        except asyncio.CancelledError:
+            return
+        except:
+            log.exception('policy_replace')
 
 
 class policy_synchronized(_policy):
@@ -137,10 +145,13 @@ class policy_clock(_policy):
         self.timer = None
         self.value = 0
         self.func = func
+        self.name = '%s.%s' % (getattr(self.func, '__module__', None), self.func.__name__)
+        self.__name__ = func.__name__
+        if getattr(func, '__module__'):
+            self.__module__ = func.__module__
 
     def __call__(self, t, log=log):
         self.log = log
-        self.name = '%s.%s' % (getattr(self.func, '__module__', None), self.func.__name__)
         # More than one hour ago? Ignore this timer. Otherwise,
         # try to call it as soon as possible
         if t < time.time() - 3600:
@@ -155,7 +166,7 @@ class policy_clock(_policy):
             log.info('no timer for %s scheduled' % self.name)
             return
         log.info('timer %s at %s' % (self.name, time.ctime(t)))
-        call_at(t, self.emit, t, log, log=log)
+        self.timer = call_at(t, self.emit, t, log, log=log)
 
     def stop(self):
         self.value = 0
@@ -233,6 +244,9 @@ class policy_cron:
             obj = self.func()
             if asyncio.iscoroutine(obj):
                 obj = await obj
+        except asyncio.CancelledError:
+            # assume we want to be called again
+            obj = True
         except:
             log.exception('policy_cron')
         if obj is not False:
