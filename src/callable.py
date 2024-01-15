@@ -192,3 +192,4 @@ class OneShotTimer(DetachedCallable):
     def stop(self):
         if self.active:
             self.__handle.cancel()
+            self.__handle = None
